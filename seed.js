@@ -27,7 +27,7 @@ export function createSignal(initialValue) {
   );
   signals[uniqueID] = signalProxy;
 
-  function signalSetter(newValue) {
+  function setSignal(newValue) {
     signals[uniqueID].value = newValue;
   }
 
@@ -37,12 +37,9 @@ export function createSignal(initialValue) {
     }
     return signals[uniqueID].value;
   }
-  return [getValue, signalSetter];
+  return [getValue, setSignal];
 }
 
-// TODO: make sure when an effect runs the signal dependencies are re-populated.
-// This is because there may be conditionals in the effect that would cause a
-// different set of signals to be relevant.
 export function createEffect(func) {
   var uniqueID = Object.keys(effects).length;
   effects[uniqueID] = { effect: func, relevantSignals: [] };
@@ -50,6 +47,9 @@ export function createEffect(func) {
 }
 
 /* *** Helper functions *** */
+// This function ensures that signal dependencies are re-populated.
+// This is necessary since there may be conditionals in the effect that would cause a
+// different set of signals to be relevant.
 function runEffect(uniqueID) {
   runEffectInProcess = true;
   effects[uniqueID].effect();
