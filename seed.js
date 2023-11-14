@@ -1,14 +1,14 @@
 "use strict";
 var createEffectCall = false;
-var effectDependencies = [];
-var signalDependencies = [];
+var signals = [];
+var effects = [];
 
 export function createSignal(initialValue) {
   const handler = {
     set(target, property, value) {
       if (property == "value" && value != target.value) {
         console.log("In set of handler");
-        if (signalDependencies[0]) signalDependencies[0]();
+        if (effects[0]) effects[0].effect();
         return true;
       }
     },
@@ -21,7 +21,7 @@ export function createSignal(initialValue) {
 
   function getValue() {
     if (createEffectCall) {
-      effectDependencies.push(signal);
+      signals.push(signal);
     }
     return signal.value;
   }
@@ -31,6 +31,10 @@ export function createSignal(initialValue) {
 export function createEffect(func) {
   createEffectCall = true;
   func();
-  signalDependencies.push(func);
+  effects.push({
+    effect: func,
+    signals: signals,
+  });
+  signals = [];
   createEffectCall = false;
 }
