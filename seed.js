@@ -1,7 +1,8 @@
 "use strict";
-var createEffectInProcess = false;
-var signals = [];
-var effects = [];
+var runEffectInProcess = false;
+var signals = {};
+var effects = {};
+var effectSignals = {};
 
 export function createSignal(initialValue) {
   const handler = {
@@ -9,40 +10,50 @@ export function createSignal(initialValue) {
       if (property == "value" && value != target.value) {
         /* *** for each effect that depends on this signal call that effect. *** */
         target[property] = value;
-        effects.forEach((effectWrapper) => {
-          var effectRan = false;
-          effectWrapper.relevantSignals.filter((target) =>
-            effectWrapper.relevantSignals.includes(target) && !effectRan
-              ? (effectWrapper.effect(), (effectRan = true))
-              : "nothing happens"
-          );
+        Object.keys(effects).forEach((effectKey) => {
+          Object.hasOwn(effects[effectKey].relevantSignals, uniqueID)
+            ? runEffect(effectKey)
+            : "nothing happens";
         });
       }
       return true;
     },
   };
-  var signal = new Proxy({ value: initialValue }, handler);
+
+  var uniqueID = Object.keys(signals).length;
+  var signalProxy = new Proxy(
+    { uniqueID: uniqueID, value: initialValue },
+    handler
+  );
+  signals[uniqueID] = signalProxy;
 
   function signalSetter(newValue) {
-    signal.value = newValue;
+    signals[uniqueID].value = newValue;
   }
 
   function getValue() {
-    if (createEffectInProcess) {
-      signals.push(signal);
+    if (runEffectInProcess) {
+      effectSignals[uniqueID] = signals[uniqueID];
     }
-    return signal.value;
+    return signals[uniqueID].value;
   }
   return [getValue, signalSetter];
 }
 
+// TODO: make sure when an effect runs the signal dependencies are re-populated.
+// This is because there may be conditionals in the effect that would cause a
+// different set of signals to be relevant.
 export function createEffect(func) {
-  createEffectInProcess = true;
-  func();
-  effects.push({
-    effect: func,
-    relevantSignals: signals,
-  });
-  signals = [];
-  createEffectInProcess = false;
+  var uniqueID = Object.keys(effects).length;
+  effects[uniqueID] = { effect: func, relevantSignals: [] };
+  runEffect(uniqueID);
+}
+
+/* *** Helper functions *** */
+function runEffect(uniqueID) {
+  runEffectInProcess = true;
+  effects[uniqueID].effect();
+  effects[uniqueID].relevantSignals = effectSignals;
+  effectSignals = [];
+  runEffectInProcess = false;
 }
