@@ -14,12 +14,14 @@ export function createSignal(initialValue) {
         /* *** for each effect that depends on this signal call that effect. *** */
         effects.forEach((effectWrapper) =>
           effectWrapper.signals.forEach((target) =>
-            effectWrapper.signals.includes(target) ? effectWrapper.effect() : 1
+            effectWrapper.signals.includes(target)
+              ? effectWrapper.effect()
+              : "nothing happens"
           )
         );
-        // if (effects[0]) effects[0].effect();
-        return true;
       }
+      target[property] = value;
+      return true;
     },
   };
   var signal = new Proxy({ value: initialValue }, handler);
