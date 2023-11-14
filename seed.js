@@ -5,10 +5,19 @@ var effects = [];
 
 export function createSignal(initialValue) {
   const handler = {
+    // get(target, property) {
+    //   return target.property;
+    // },
     set(target, property, value) {
       if (property == "value" && value != target.value) {
         console.log("In set of handler");
-        if (effects[0]) effects[0].effect();
+        /* *** for each effect that depends on this signal call that effect. *** */
+        effects.forEach((effectWrapper) =>
+          effectWrapper.signals.forEach((target) =>
+            effectWrapper.signals.includes(target) ? effectWrapper.effect() : 1
+          )
+        );
+        // if (effects[0]) effects[0].effect();
         return true;
       }
     },
