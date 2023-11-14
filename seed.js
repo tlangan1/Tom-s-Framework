@@ -1,5 +1,5 @@
 "use strict";
-var createEffectCall = false;
+var createEffectInProcess = false;
 var signals = [];
 var effects = [];
 
@@ -7,18 +7,17 @@ export function createSignal(initialValue) {
   const handler = {
     set(target, property, value) {
       if (property == "value" && value != target.value) {
-        console.log("In set of handler");
         /* *** for each effect that depends on this signal call that effect. *** */
+        target[property] = value;
         effects.forEach((effectWrapper) => {
           var effectRan = false;
-          effectWrapper.signals.filter((target) =>
-            effectWrapper.signals.includes(target) && !effectRan
+          effectWrapper.relevantSignals.filter((target) =>
+            effectWrapper.relevantSignals.includes(target) && !effectRan
               ? (effectWrapper.effect(), (effectRan = true))
               : "nothing happens"
           );
         });
       }
-      target[property] = value;
       return true;
     },
   };
@@ -29,7 +28,7 @@ export function createSignal(initialValue) {
   }
 
   function getValue() {
-    if (createEffectCall) {
+    if (createEffectInProcess) {
       signals.push(signal);
     }
     return signal.value;
@@ -38,12 +37,12 @@ export function createSignal(initialValue) {
 }
 
 export function createEffect(func) {
-  createEffectCall = true;
+  createEffectInProcess = true;
   func();
   effects.push({
     effect: func,
-    signals: signals,
+    relevantSignals: signals,
   });
   signals = [];
-  createEffectCall = false;
+  createEffectInProcess = false;
 }
